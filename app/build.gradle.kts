@@ -56,4 +56,18 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // 1. Retrofit (Koneksi ke Node.js)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+    // 2. Coil (Load Gambar Produk dari Server)
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
+    // 3. Navigation Compose
+    implementation("androidx.navigation:navigation-compose:2.7.5")
+
+    // 4. ViewModel Compose
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
 }
