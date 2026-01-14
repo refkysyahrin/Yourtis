@@ -51,4 +51,8 @@ interface YourTisApiService {
 
     @POST("api/transactions/checkout")
     suspend fun checkout(@Body transactionData: Map<String, Any>): Map<String, Any>
+
+    // AMBIL DATA TRANSAKSI
+    @GET("api/transactions")
+    suspend fun getAllTransaksi(): List<com.example.yourtis.modeldata.Transaksi>
 }
