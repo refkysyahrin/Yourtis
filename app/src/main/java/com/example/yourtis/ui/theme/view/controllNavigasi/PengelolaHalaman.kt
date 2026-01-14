@@ -5,20 +5,42 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.yourtis.ui.theme.view.auth.HalamanLogin
 import com.example.yourtis.ui.theme.view.auth.HalamanRegister
+import com.example.yourtis.ui.theme.view.pembeli.HalamanCart
+import com.example.yourtis.ui.theme.view.petani.HalamanEntrySayur
 import com.example.yourtis.ui.theme.view.petani.HalamanHomePetani
+import com.example.yourtis.ui.view.pembeli.HalamanKatalog
 
-// Route
-object DestinasiLogin { const val route = "login" }
-object DestinasiRegister { const val route = "register" }
-object DestinasiHomePetani { const val route = "home_petani" }
-object DestinasiHomePembeli { const val route = "home_pembeli" }
-object DestinasiEntrySayur { const val route = "entry_sayur" }
+// --- Definisi Route (Alamat Navigasi) ---
+object DestinasiLogin {
+    const val route = "login"
+}
+
+object DestinasiRegister {
+    const val route = "register"
+}
+
+object DestinasiHomePetani {
+    const val route = "home_petani"
+}
+
+object DestinasiEntrySayur {
+    const val route = "entry_sayur"
+}
+
+object DestinasiHomePembeli {
+    const val route = "home_pembeli"
+}
+
+object DestinasiCart {
+    const val route = "cart"
+}
 
 @Composable
 fun PengelolaHalaman(
@@ -30,13 +52,15 @@ fun PengelolaHalaman(
             startDestination = DestinasiLogin.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // 1. LOGIN
+
+            // 1. HALAMAN LOGIN
             composable(route = DestinasiLogin.route) {
                 HalamanLogin(
                     onLoginSuccess = { user ->
+                        // Logika: Cek Role User untuk menentukan arah navigasi
                         if (user.role == "Petani") {
                             navController.navigate(DestinasiHomePetani.route) {
-                                popUpTo(DestinasiLogin.route) { inclusive = true }
+                                popUpTo(DestinasiLogin.route) { inclusive = true } // Hapus history login
                             }
                         } else {
                             navController.navigate(DestinasiHomePembeli.route) {
@@ -50,26 +74,26 @@ fun PengelolaHalaman(
                 )
             }
 
-            // 2. REGISTER (Sudah menggunakan HalamanRegister Asli)
+            // 2. HALAMAN REGISTER
             composable(route = DestinasiRegister.route) {
                 HalamanRegister(
                     onRegisterSuccess = {
-                        // Kembali ke login setelah sukses
-                        navController.popBackStack()
+                        navController.popBackStack() // Sukses daftar -> Kembali ke Login
                     },
                     onNavigateBack = {
-                        // Kembali jika batal
-                        navController.popBackStack()
+                        navController.popBackStack() // Batal -> Kembali ke Login
                     }
                 )
             }
 
-            // 3. DASHBOARD PETANI (ASLI)
+            // --- AREA PETANI ---
+
+            // 3. DASHBOARD PETANI
             composable(route = DestinasiHomePetani.route) {
                 HalamanHomePetani(
                     onLogout = {
                         navController.navigate(DestinasiLogin.route) {
-                            popUpTo(0)
+                            popUpTo(0) // Logout -> Hapus semua stack, kembali ke Login
                         }
                     },
                     onNavigateToEntry = {
@@ -77,38 +101,40 @@ fun PengelolaHalaman(
                     }
                 )
             }
-            // 4. HALAMAN TAMBAH SAYUR (Placeholder dulu)
+
+            // 4. HALAMAN TAMBAH SAYUR (ENTRY)
             composable(route = DestinasiEntrySayur.route) {
-                // Kita akan buat HalamanEntrySayur di langkah berikutnya
-                androidx.compose.material3.Text("Halaman Form Tambah Sayur (Segera Dibuat)")
+                HalamanEntrySayur(
+                    navigateBack = {
+                        navController.popBackStack() // Selesai/Batal -> Kembali ke Dashboard
+                    }
+                )
             }
 
+            // --- AREA PEMBELI ---
 
-            // 4. DASHBOARD PEMBELI (Masih Dummy)
+            // 5. KATALOG SAYUR (HOME PEMBELI)
             composable(route = DestinasiHomePembeli.route) {
-                HalamanHomePembeliDummy(
+                HalamanKatalog(
                     onLogout = {
                         navController.navigate(DestinasiLogin.route) {
                             popUpTo(0)
                         }
+                    },
+                    onNavigateToCart = {
+                        navController.navigate(DestinasiCart.route)
+                    }
+                )
+            }
+
+            // 6. KERANJANG BELANJA & CHECKOUT
+            composable(route = DestinasiCart.route) {
+                HalamanCart(
+                    onNavigateBack = {
+                        navController.popBackStack() // Kembali ke Katalog
                     }
                 )
             }
         }
-    }
-}
-
-// Dummy sementara
-@Composable
-fun HalamanHomePetaniDummy(onLogout: () -> Unit) {
-    androidx.compose.material3.Button(onClick = onLogout) {
-        Text("Ini Dashboard Petani. Klik Logout")
-    }
-}
-
-@Composable
-fun HalamanHomePembeliDummy(onLogout: () -> Unit) {
-    androidx.compose.material3.Button(onClick = onLogout) {
-        Text("Ini Katalog Pembeli. Klik Logout")
     }
 }
