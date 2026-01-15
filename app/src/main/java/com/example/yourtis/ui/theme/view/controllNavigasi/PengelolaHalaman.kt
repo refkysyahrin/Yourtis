@@ -1,9 +1,6 @@
 package com.example.yourtis.ui.theme.view.controllNavigasi
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -20,22 +17,27 @@ import com.example.yourtis.ui.theme.view.petani.HalamanEntrySayur
 import com.example.yourtis.ui.theme.view.petani.HalamanHomePetani
 import com.example.yourtis.ui.theme.view.petani.HalamanKelolaProduk
 import com.example.yourtis.ui.theme.view.petani.HalamanLaporan
+import com.example.yourtis.ui.theme.viewmodel.EntryViewModel
 import com.example.yourtis.ui.theme.viewmodel.PembeliViewModel
 import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
+import com.example.yourtis.ui.theme.viewmodel.PetaniViewModel
 import com.example.yourtis.ui.view.pembeli.HalamanKatalog
 
 @Composable
 fun PengelolaHalaman(navController: NavHostController = rememberNavController()) {
-    // Shared ViewModel untuk Pembeli
+    // Shared ViewModels
     val pembeliVM: PembeliViewModel = viewModel(factory = PenyediaViewModel.Factory)
+    val petaniVM: PetaniViewModel = viewModel(factory = PenyediaViewModel.Factory)
+    val entryVM: EntryViewModel = viewModel(factory = PenyediaViewModel.Factory)
 
     NavHost(navController = navController, startDestination = "login") {
 
-        // --- AUTHENTICATION ---
         composable("login") {
             HalamanLogin(
                 onLoginSuccess = { user ->
                     if (user.role == "Petani") {
+                        // Simpan ID Petani untuk keperluan CRUD
+                        entryVM.currentPetaniId = user.id_user
                         navController.navigate("home_petani") {
                             popUpTo("login") { inclusive = true }
                         }
@@ -57,9 +59,6 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
             )
         }
 
-        // --- RUTE PETANI (TAMBAHAN BARU) ---
-
-        // 1. Halaman Utama Petani (Dashboard)
         composable("home_petani") {
             HalamanHomePetani(
                 onLogout = {
@@ -72,16 +71,15 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
             )
         }
 
-        // 2. Halaman Daftar Produk Petani
         composable("kelola_produk") {
             HalamanKelolaProduk(
+                viewModel = petaniVM,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToEntry = { navController.navigate("entry_sayur?id=-1") }, // Tambah Baru
-                onNavigateToEdit = { id -> navController.navigate("entry_sayur?id=$id") } // Edit
+                onNavigateToEntry = { navController.navigate("entry_sayur?id=-1") },
+                onNavigateToEdit = { id -> navController.navigate("entry_sayur?id=$id") }
             )
         }
 
-        // 3. Halaman Form Entry/Edit Sayur (Menggunakan Query Parameter)
         composable(
             route = "entry_sayur?id={id}",
             arguments = listOf(
@@ -93,19 +91,18 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getInt("id") ?: -1
             HalamanEntrySayur(
+                viewModel = entryVM,
                 navigateBack = { navController.popBackStack() },
-                idSayur = if (id != -1) id else null // Jika -1 berarti tambah baru, jika ada id berarti edit
+                idSayur = if (id != -1) id else null
             )
         }
 
-        // 4. Halaman Laporan Penjualan/Transaksi Petani
         composable("laporan_transaksi") {
             HalamanLaporan(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        // --- RUTE PEMBELI (SHARED VIEWMODEL) ---
         composable("home_pembeli") {
             HalamanKatalog(
                 viewModel = pembeliVM,

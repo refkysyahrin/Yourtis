@@ -3,7 +3,6 @@ package com.example.yourtis.ui.theme.view.petani
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,19 +28,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.yourtis.R
 import com.example.yourtis.modeldata.Sayur
 import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 import com.example.yourtis.ui.theme.viewmodel.PetaniViewModel
@@ -56,6 +54,10 @@ fun HalamanKelolaProduk(
     onNavigateToEdit: (Int) -> Unit,
     viewModel: PetaniViewModel = viewModel(factory = PenyediaViewModel.Factory)
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.loadProduk()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,12 +79,16 @@ fun HalamanKelolaProduk(
             is ProdukUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
             is ProdukUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Gagal memuat data") }
             is ProdukUiState.Success -> {
-                LazyColumn(
-                    modifier = Modifier.padding(innerPadding).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(state.sayur) { sayur ->
-                        CardSayur(sayur = sayur, onDelete = { viewModel.deleteSayur(it) }, onEdit = onNavigateToEdit)
+                if (state.sayur.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), Alignment.Center) { Text("Belum ada produk") }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.padding(innerPadding).padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.sayur) { sayur ->
+                            CardSayur(sayur = sayur, onDelete = { viewModel.deleteSayur(it) }, onEdit = onNavigateToEdit)
+                        }
                     }
                 }
             }
@@ -92,12 +98,20 @@ fun HalamanKelolaProduk(
 
 @Composable
 fun CardSayur(sayur: Sayur, onDelete: (Int) -> Unit, onEdit: (Int) -> Unit) {
+    // DISESUAIKAN KE PORT 3000 SESUAI CONTAINER APP
+    val imageUrl = if (!sayur.gambar_url.isNullOrBlank()) {
+        sayur.gambar_url.replace("localhost", "10.0.2.2")
+    } else {
+        "http://10.0.2.2:3000/uploads/${sayur.gambar}"
+    }
+
     Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
         Column {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(sayur.gambar_url?.replace("localhost", "10.0.2.2"))
-                    .crossfade(true).build(),
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(150.dp)
@@ -107,7 +121,6 @@ fun CardSayur(sayur: Sayur, onDelete: (Int) -> Unit, onEdit: (Int) -> Unit) {
                 Text(text = "Rp ${sayur.harga} / kg", color = MaterialTheme.colorScheme.primary)
                 Text(text = "Stok: ${sayur.stok}", style = MaterialTheme.typography.bodyMedium)
 
-                // MENAMPILKAN DESKRIPSI
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = sayur.deskripsi,

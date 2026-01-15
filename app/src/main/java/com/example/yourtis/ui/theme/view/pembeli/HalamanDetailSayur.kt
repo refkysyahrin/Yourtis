@@ -28,18 +28,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.yourtis.ui.theme.viewmodel.HomeUiState
 import com.example.yourtis.ui.theme.viewmodel.PembeliViewModel
-import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HalamanDetailSayur(
     idSayur: Int,
     onNavigateBack: () -> Unit,
-    viewModel: PembeliViewModel // Diterima sebagai shared instance dari PengelolaHalaman
+    viewModel: PembeliViewModel
 ) {
     val state = viewModel.homeUiState
     val sayur = (state as? HomeUiState.Success)?.sayur?.find { it.id_sayur == idSayur }
@@ -57,10 +55,17 @@ fun HalamanDetailSayur(
         }
     ) { innerPadding ->
         sayur?.let { data ->
+            // Mapping URL Gambar: localhost -> 10.0.2.2
+            val imageUrl = if (!data.gambar_url.isNullOrBlank()) {
+                data.gambar_url.replace("localhost", "10.0.2.2")
+            } else {
+                "http://10.0.2.2:8000/uploads/${data.gambar}"
+            }
+
             Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                 Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                     AsyncImage(
-                        model = data.gambar_url?.replace("localhost", "10.0.2.2"),
+                        model = imageUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxWidth().height(300.dp),
                         contentScale = ContentScale.Crop
@@ -77,7 +82,7 @@ fun HalamanDetailSayur(
                 }
                 Surface(shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
                     Button(
-                        onClick = { viewModel.addToCart(data) }, // Menambah ke shared state keranjang
+                        onClick = { viewModel.addToCart(data) },
                         modifier = Modifier.padding(16.dp).fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
                         enabled = data.stok > 0

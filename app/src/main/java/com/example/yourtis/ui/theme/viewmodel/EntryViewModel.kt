@@ -18,7 +18,6 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 
 
 class EntryViewModel(private val repository: YourTisRepository) : ViewModel() {
@@ -32,9 +31,27 @@ class EntryViewModel(private val repository: YourTisRepository) : ViewModel() {
     var deskripsi by mutableStateOf("")
     var imageUri by mutableStateOf<Uri?>(null)
 
+    // Menyimpan ID Petani yang login
+    var currentPetaniId by mutableStateOf(0)
+
     private var currentIdSayur: Int? = null
 
+    fun resetForm() {
+        currentIdSayur = null
+        namaSayur = ""
+        harga = ""
+        stok = ""
+        deskripsi = ""
+        imageUri = null
+        uiState = LoginUiState.Idle
+    }
+
     fun loadDataForEdit(id: Int) {
+        if (id == -1) {
+            resetForm()
+            return
+        }
+        
         currentIdSayur = id
         viewModelScope.launch {
             try {
@@ -43,6 +60,7 @@ class EntryViewModel(private val repository: YourTisRepository) : ViewModel() {
                 harga = sayur.harga.toString()
                 stok = sayur.stok.toString()
                 deskripsi = sayur.deskripsi
+                uiState = LoginUiState.Idle
             } catch (e: Exception) {
                 Log.e("EntryViewModel", "Gagal load data edit: ${e.message}")
             }
@@ -57,6 +75,11 @@ class EntryViewModel(private val repository: YourTisRepository) : ViewModel() {
 
         if (currentIdSayur == null && imageUri == null) {
             Toast.makeText(context, "Foto sayur wajib diupload untuk produk baru!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (currentPetaniId == 0) {
+            Toast.makeText(context, "Sesi petani tidak valid. Silakan login ulang.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -77,19 +100,17 @@ class EntryViewModel(private val repository: YourTisRepository) : ViewModel() {
 
                 if (currentIdSayur == null) {
                     // MODE INSERT
-                    val idPetaniReq = "1".toRequestBody("text/plain".toMediaTypeOrNull())
+                    val idPetaniReq = currentPetaniId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                     repository.insertSayur(idPetaniReq, namaReq, hargaReq, stokReq, descReq, imagePart!!)
 
                     Toast.makeText(context, "Berhasil menambah produk!", Toast.LENGTH_SHORT).show()
-                    // PERBAIKAN: Berikan objek User dummy atau sesuai karena Success butuh parameter User
-                    uiState = LoginUiState.Success(User(0, "", "", "", "", ""))
+                    uiState = LoginUiState.Success(User(currentPetaniId, "", "", "", "", ""))
                 } else {
                     // MODE UPDATE
                     repository.updateSayur(currentIdSayur!!, namaReq, hargaReq, stokReq, descReq, imagePart)
 
                     Toast.makeText(context, "Berhasil update produk!", Toast.LENGTH_SHORT).show()
-                    // PERBAIKAN: Berikan objek User dummy
-                    uiState = LoginUiState.Success(User(0, "", "", "", "", ""))
+                    uiState = LoginUiState.Success(User(currentPetaniId, "", "", "", "", ""))
                 }
 
             } catch (e: Exception) {
