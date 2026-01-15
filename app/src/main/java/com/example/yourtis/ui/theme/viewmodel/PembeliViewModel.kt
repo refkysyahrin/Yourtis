@@ -58,6 +58,20 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         }
     }
 
+    // Mengambil detail sayur spesifik dari backend (untuk halaman detail dengan data terbaru)
+    suspend fun getSayurDetail(id: Int): Sayur? {
+        return try {
+            repository.getSayurById(id)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Refresh data katalog (untuk pull-to-refresh)
+    fun refreshSayur() {
+        getSayur()
+    }
+
     // Menambah produk ke keranjang belanja
     fun addToCart(sayur: Sayur) {
         val index = _cartItems.indexOfFirst { it.sayur.id_sayur == sayur.id_sayur }
