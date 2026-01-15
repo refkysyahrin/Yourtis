@@ -6,31 +6,24 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.yourtis.YourTisApplication
 
+
 object PenyediaViewModel {
     val Factory = viewModelFactory {
-
-        // 1. Auth ViewModel (Login & Register)
         initializer {
-            AuthViewModel(aplikasiYourTis().container.yourTisRepository)
+            AuthViewModel(yourTisApplication().container.yourTisRepository)
         }
-
-        // 2. Petani ViewModel (Dashboard: List & Delete)
         initializer {
-            PetaniViewModel(aplikasiYourTis().container.yourTisRepository)
+            EntryViewModel(yourTisApplication().container.yourTisRepository)
         }
-
-        // 3. Entry ViewModel (Tambah Sayur & Upload Gambar) -> BARU DITAMBAHKAN
+        // Inisialisasi PembeliViewModel sebagai shared viewmodel
         initializer {
-            EntryViewModel(aplikasiYourTis().container.yourTisRepository)
+            PembeliViewModel(yourTisApplication().container.yourTisRepository)
         }
-
-        // 4. Pembeli ViewModel (Katalog Belanja)
         initializer {
-            PembeliViewModel(aplikasiYourTis().container.yourTisRepository)
+            PetaniViewModel(yourTisApplication().container.yourTisRepository)
         }
     }
 }
 
-// Extension function untuk akses Application Container
-fun CreationExtras.aplikasiYourTis(): YourTisApplication =
+fun CreationExtras.yourTisApplication(): YourTisApplication =
     (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as YourTisApplication)

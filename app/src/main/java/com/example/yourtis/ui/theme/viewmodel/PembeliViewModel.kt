@@ -19,23 +19,25 @@ sealed interface HomeUiState {
 
 data class CartItem(
     val sayur: Sayur,
-    var qty: Int
+    val qty: Int
 )
 
 class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() {
 
+    // Menyimpan ID User dari Login agar Checkout tidak gagal di Database
+    var currentUserId by mutableStateOf(0)
+
     var homeUiState: HomeUiState by mutableStateOf(HomeUiState.Loading)
         private set
 
+    // Menggunakan mutableStateListOf agar perubahan di Katalog/Detail langsung muncul di Cart
     private val _cartItems = mutableStateListOf<CartItem>()
     val cartItems: List<CartItem> get() = _cartItems
 
     var checkoutUiState: LoginUiState by mutableStateOf(LoginUiState.Idle)
         private set
 
-    init {
-        getSayur()
-    }
+    init { getSayur() }
 
     fun getSayur() {
         viewModelScope.launch {
@@ -50,11 +52,11 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
     }
 
     fun addToCart(sayur: Sayur) {
-        val existingItem = _cartItems.find { it.sayur.id_sayur == sayur.id_sayur }
-        if (existingItem != null) {
-            if (existingItem.qty < sayur.stok) {
-                val index = _cartItems.indexOf(existingItem)
-                _cartItems[index] = existingItem.copy(qty = existingItem.qty + 1)
+        val index = _cartItems.indexOfFirst { it.sayur.id_sayur == sayur.id_sayur }
+        if (index != -1) {
+            val item = _cartItems[index]
+            if (item.qty < sayur.stok) {
+                _cartItems[index] = item.copy(qty = item.qty + 1)
             }
         } else {
             _cartItems.add(CartItem(sayur, 1))
@@ -62,43 +64,38 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
     }
 
     fun removeFromCart(cartItem: CartItem) {
-        if (cartItem.qty > 1) {
-            val index = _cartItems.indexOf(cartItem)
-            _cartItems[index] = cartItem.copy(qty = cartItem.qty - 1)
-        } else {
-            _cartItems.remove(cartItem)
+        val index = _cartItems.indexOfFirst { it.sayur.id_sayur == cartItem.sayur.id_sayur }
+        if (index != -1) {
+            val item = _cartItems[index]
+            if (item.qty > 1) {
+                _cartItems[index] = item.copy(qty = item.qty - 1)
+            } else {
+                _cartItems.removeAt(index)
+            }
         }
     }
 
-    fun calculateTotal(): Int {
-        return _cartItems.sumOf { it.sayur.harga * it.qty }
-    }
+    fun calculateTotal(): Int = _cartItems.sumOf { it.sayur.harga * it.qty }
 
-    // Proses Checkout sesuai standar SRS
-    fun processCheckout(idPembeli: Int, alamat: String, metodeKirim: String, metodeBayar: String) {
+    fun processCheckout(alamat: String, metodeKirim: String, metodeBayar: String) {
+        if (currentUserId == 0) return
+
         viewModelScope.launch {
             checkoutUiState = LoginUiState.Loading
             try {
-                val itemsList = _cartItems.map {
-                    mapOf(
-                        "id_sayur" to it.sayur.id_sayur,
-                        "qty" to it.qty,
-                        "subtotal" to (it.sayur.harga * it.qty)
-                    )
-                }
-
                 val transactionData = mapOf(
-                    "id_pembeli" to idPembeli,
-                    "alamat_pengiriman" to alamat,
+                    "id_pembeli" to currentUserId,
                     "total_bayar" to calculateTotal(),
                     "metode_kirim" to metodeKirim,
                     "metode_bayar" to metodeBayar,
-                    "items" to itemsList
+                    "alamat_pengiriman" to alamat,
+                    "items" to _cartItems.map {
+                        mapOf("id_sayur" to it.sayur.id_sayur, "qty" to it.qty, "subtotal" to (it.sayur.harga * it.qty))
+                    }
                 )
-
                 repository.checkout(transactionData)
                 _cartItems.clear()
-                // Berikan feedback sukses dengan User dummy
+                // Gunakan dummy User agar tipe Success cocok dengan LoginUiState
                 checkoutUiState = LoginUiState.Success(User(0, "", "", "", "", ""))
             } catch (e: Exception) {
                 checkoutUiState = LoginUiState.Error
@@ -106,7 +103,5 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         }
     }
 
-    fun resetCheckoutState() {
-        checkoutUiState = LoginUiState.Idle
-    }
+    fun resetCheckoutState() { checkoutUiState = LoginUiState.Idle }
 }

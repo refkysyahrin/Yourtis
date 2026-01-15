@@ -1,37 +1,24 @@
 package com.example.yourtis.ui.theme.view.pembeli
 
-import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items // PENTING: Import ini wajib ada
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.yourtis.R
-import com.example.yourtis.ui.theme.viewmodel.CartItem
-import com.example.yourtis.ui.theme.viewmodel.LoginUiState
 import com.example.yourtis.ui.theme.viewmodel.PembeliViewModel
-import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +26,7 @@ import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 fun HalamanCart(
     onNavigateBack: () -> Unit,
     onNavigateToCheckout: () -> Unit,
-    viewModel: PembeliViewModel = viewModel(factory = PenyediaViewModel.Factory)
+    viewModel: PembeliViewModel // Menerima shared instance dari PengelolaHalaman
 ) {
     val cartItems = viewModel.cartItems
 
@@ -85,30 +72,80 @@ fun HalamanCart(
     ) { innerPadding ->
         if (cartItems.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) {
-                Text("Keranjang Anda kosong")
+                Text("Keranjang Anda kosong", style = MaterialTheme.typography.bodyLarge)
             }
         } else {
             LazyColumn(
-                modifier = Modifier.padding(innerPadding).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(cartItems) { item ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Menambahkan gambar kecil di keranjang agar sesuai SRS
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(item.sayur.gambar_url?.replace("localhost", "10.0.2.2"))
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(70.dp)
+                                    .padding(4.dp),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(item.sayur.nama_sayur, fontWeight = FontWeight.Bold)
-                                Text("Rp ${item.sayur.harga} / kg")
+                                Text(
+                                    text = item.sayur.nama_sayur,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Rp ${item.sayur.harga} x ${item.qty} kg",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "Rp ${item.sayur.harga * item.qty}",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { viewModel.removeFromCart(item) }) {
-                                    Icon(Icons.Default.Remove, contentDescription = null)
+
+                            // Kontrol Jumlah (Quantity)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { viewModel.removeFromCart(item) },
+                                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color.Red)
+                                ) {
+                                    Icon(Icons.Default.Remove, contentDescription = "Kurang")
                                 }
-                                Text("${item.qty}")
-                                IconButton(onClick = { viewModel.addToCart(item.sayur) }) {
-                                    Icon(Icons.Default.Add, contentDescription = null)
+
+                                Text(
+                                    text = "${item.qty}",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+
+                                IconButton(
+                                    onClick = { viewModel.addToCart(item.sayur) },
+                                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color(0xFF2E7D32)),
+                                    enabled = item.qty < item.sayur.stok
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Tambah")
                                 }
                             }
                         }

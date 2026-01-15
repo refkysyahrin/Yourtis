@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,78 +20,131 @@ import com.example.yourtis.ui.theme.view.petani.HalamanEntrySayur
 import com.example.yourtis.ui.theme.view.petani.HalamanHomePetani
 import com.example.yourtis.ui.theme.view.petani.HalamanKelolaProduk
 import com.example.yourtis.ui.theme.view.petani.HalamanLaporan
+import com.example.yourtis.ui.theme.viewmodel.PembeliViewModel
+import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 import com.example.yourtis.ui.view.pembeli.HalamanKatalog
-
-
-object DestinasiLogin { const val route = "login" }
-object DestinasiRegister { const val route = "register" }
-object DestinasiHomePetani { const val route = "home_petani" }
-object DestinasiKelolaProduk { const val route = "kelola_produk" }
-object DestinasiEntrySayur { const val route = "entry_sayur?id={id}" }
-object DestinasiHomePembeli { const val route = "home_pembeli" }
-object DestinasiCart { const val route = "cart" }
-object DestinasiDetail { const val route = "detail_sayur/{id}" }
-object DestinasiCheckout { const val route = "checkout" }
 
 @Composable
 fun PengelolaHalaman(navController: NavHostController = rememberNavController()) {
-    NavHost(navController = navController, startDestination = DestinasiLogin.route) {
-        composable(DestinasiLogin.route) {
+    // Shared ViewModel untuk Pembeli
+    val pembeliVM: PembeliViewModel = viewModel(factory = PenyediaViewModel.Factory)
+
+    NavHost(navController = navController, startDestination = "login") {
+
+        // --- AUTHENTICATION ---
+        composable("login") {
             HalamanLogin(
                 onLoginSuccess = { user ->
-                    if (user.role == "Petani") navController.navigate(DestinasiHomePetani.route)
-                    else navController.navigate(DestinasiHomePembeli.route)
+                    if (user.role == "Petani") {
+                        navController.navigate("home_petani") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    } else {
+                        pembeliVM.currentUserId = user.id_user
+                        navController.navigate("home_pembeli") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }
                 },
-                onNavigateToRegister = { navController.navigate(DestinasiRegister.route) }
+                onNavigateToRegister = { navController.navigate("register") }
             )
         }
 
-        composable(DestinasiRegister.route) {
-            HalamanRegister(onRegisterSuccess = { navController.popBackStack() }, onNavigateBack = { navController.popBackStack() })
+        composable("register") {
+            HalamanRegister(
+                onRegisterSuccess = { navController.popBackStack() },
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
-        composable(DestinasiHomePetani.route) {
+        // --- RUTE PETANI (TAMBAHAN BARU) ---
+
+        // 1. Halaman Utama Petani (Dashboard)
+        composable("home_petani") {
             HalamanHomePetani(
-                onLogout = { navController.navigate(DestinasiLogin.route) { popUpTo(0) } },
-                onNavigateToKelolaProduk = { navController.navigate(DestinasiKelolaProduk.route) },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigateToKelolaProduk = { navController.navigate("kelola_produk") },
                 onNavigateToLaporan = { navController.navigate("laporan_transaksi") }
             )
         }
 
-        composable(DestinasiHomePembeli.route) {
+        // 2. Halaman Daftar Produk Petani
+        composable("kelola_produk") {
+            HalamanKelolaProduk(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { navController.navigate("entry_sayur?id=-1") }, // Tambah Baru
+                onNavigateToEdit = { id -> navController.navigate("entry_sayur?id=$id") } // Edit
+            )
+        }
+
+        // 3. Halaman Form Entry/Edit Sayur (Menggunakan Query Parameter)
+        composable(
+            route = "entry_sayur?id={id}",
+            arguments = listOf(
+                navArgument("id") {
+                    type = NavType.IntType
+                    defaultValue = -1
+                }
+            )
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getInt("id") ?: -1
+            HalamanEntrySayur(
+                navigateBack = { navController.popBackStack() },
+                idSayur = if (id != -1) id else null // Jika -1 berarti tambah baru, jika ada id berarti edit
+            )
+        }
+
+        // 4. Halaman Laporan Penjualan/Transaksi Petani
+        composable("laporan_transaksi") {
+            HalamanLaporan(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // --- RUTE PEMBELI (SHARED VIEWMODEL) ---
+        composable("home_pembeli") {
             HalamanKatalog(
-                onLogout = { navController.navigate(DestinasiLogin.route) { popUpTo(0) } },
-                onNavigateToCart = { navController.navigate(DestinasiCart.route) },
-                onNavigateToDetail = { id -> navController.navigate("detail_sayur/$id") }
+                viewModel = pembeliVM,
+                onNavigateToCart = { navController.navigate("cart") },
+                onNavigateToDetail = { id -> navController.navigate("detail_sayur/$id") },
+                onLogout = { navController.navigate("login") { popUpTo(0) } }
             )
         }
 
         composable(
-            route = DestinasiDetail.route,
+            route = "detail_sayur/{id}",
             arguments = listOf(navArgument("id") { type = NavType.IntType })
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getInt("id") ?: 0
-            HalamanDetailSayur(idSayur = id, onNavigateBack = { navController.popBackStack() })
-        }
-
-        composable(DestinasiCart.route) {
-            HalamanCart(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToCheckout = { navController.navigate(DestinasiCheckout.route) }
+            HalamanDetailSayur(
+                idSayur = id,
+                viewModel = pembeliVM,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        composable(DestinasiCheckout.route) {
+        composable("cart") {
+            HalamanCart(
+                viewModel = pembeliVM,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCheckout = { navController.navigate("checkout") }
+            )
+        }
+
+        composable("checkout") {
             HalamanCheckout(
+                viewModel = pembeliVM,
                 onNavigateBack = { navController.popBackStack() },
                 onCheckoutSuccess = {
-                    navController.navigate(DestinasiHomePembeli.route) {
-                        popUpTo(DestinasiHomePembeli.route) { inclusive = true }
+                    navController.navigate("home_pembeli") {
+                        popUpTo("home_pembeli") { inclusive = true }
                     }
                 }
             )
         }
-
-        // ... rute lainnya (Laporan, Kelola Produk, dll)
     }
 }
