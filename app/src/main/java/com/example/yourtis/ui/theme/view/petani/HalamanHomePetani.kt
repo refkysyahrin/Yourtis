@@ -1,55 +1,22 @@
 package com.example.yourtis.ui.theme.view.petani
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.example.yourtis.R
-import com.example.yourtis.modeldata.Sayur
 import com.example.yourtis.modeldata.Transaksi
 import com.example.yourtis.ui.theme.viewmodel.DashboardUiState
 import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
@@ -60,10 +27,9 @@ import com.example.yourtis.ui.theme.viewmodel.PetaniViewModel
 fun HalamanHomePetani(
     onLogout: () -> Unit,
     onNavigateToKelolaProduk: () -> Unit,
-    onNavigateToLaporan: () -> Unit, // Parameter Navigasi Baru
+    onNavigateToLaporan: () -> Unit,
     viewModel: PetaniViewModel = viewModel(factory = PenyediaViewModel.Factory)
 ) {
-    // Refresh data saat halaman dibuka
     LaunchedEffect(Unit) {
         viewModel.loadDashboard()
     }
@@ -73,7 +39,7 @@ fun HalamanHomePetani(
             CenterAlignedTopAppBar(
                 title = { Text("Dashboard Admin", fontWeight = FontWeight.Bold, color = Color.White) },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFF1B5E20) // Hijau Tua
+                    containerColor = Color(0xFF1B5E20)
                 ),
                 actions = {
                     IconButton(onClick = onLogout) {
@@ -83,10 +49,9 @@ fun HalamanHomePetani(
             )
         }
     ) { innerPadding ->
-
         when (val state = viewModel.dashboardUiState) {
             is DashboardUiState.Loading -> LoadingScreen(modifier = Modifier.padding(innerPadding))
-            is DashboardUiState.Error -> ErrorScreen({ viewModel.loadDashboard() }, Modifier.padding(innerPadding))
+            is DashboardUiState.Error -> ErrorScreen(onRetry = { viewModel.loadDashboard() }, modifier = Modifier.padding(innerPadding))
             is DashboardUiState.Success -> {
                 Column(
                     modifier = Modifier
@@ -94,7 +59,6 @@ fun HalamanHomePetani(
                         .fillMaxSize()
                         .padding(16.dp)
                 ) {
-                    // 1. KARTU PENDAPATAN
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2E7D32)),
                         shape = RoundedCornerShape(12.dp),
@@ -116,7 +80,6 @@ fun HalamanHomePetani(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // 2. LIST PESANAN TERBARU
                     Text("Pesanan Terbaru", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -131,8 +94,6 @@ fun HalamanHomePetani(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 3. TOMBOL NAVIGASI
-                    // Tombol Kelola Produk
                     Button(
                         onClick = onNavigateToKelolaProduk,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -143,9 +104,8 @@ fun HalamanHomePetani(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Tombol Lihat Laporan
                     OutlinedButton(
-                        onClick = onNavigateToLaporan, // Navigasi ke Halaman Laporan
+                        onClick = onNavigateToLaporan,
                         modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
                         Text("Lihat Laporan Lengkap", color = Color(0xFF2E7D32))
@@ -173,9 +133,11 @@ fun ItemTransaksi(trx: Transaksi) {
                 Text("Rp ${trx.total_bayar}", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
             }
 
-            // Warna status
-            val bgColor = if (trx.status == "Selesai") Color(0xFFE8F5E9) else Color(0xFFFFFDE7)
-            val textColor = if (trx.status == "Selesai") Color(0xFF2E7D32) else Color(0xFFFBC02D)
+            val (bgColor, textColor) = when (trx.status) {
+                "Selesai" -> Color(0xFFE8F5E9) to Color(0xFF2E7D32)
+                "Proses" -> Color(0xFFE3F2FD) to Color(0xFF1565C0)
+                else -> Color(0xFFFFFDE7) to Color(0xFFFBC02D)
+            }
 
             Box(
                 modifier = Modifier
@@ -185,25 +147,5 @@ fun ItemTransaksi(trx: Transaksi) {
                 Text(trx.status, color = textColor, style = MaterialTheme.typography.labelSmall)
             }
         }
-    }
-}
-
-// Komponen Helper (Agar tidak error Unresolved Reference)
-@Composable
-fun LoadingScreen(modifier: Modifier = Modifier) {
-    Box(contentAlignment = Alignment.Center, modifier = modifier.fillMaxSize()) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
-fun ErrorScreen(retryAction: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Gagal memuat data")
-        Button(onClick = retryAction) { Text("Coba Lagi") }
     }
 }

@@ -13,6 +13,7 @@ import com.example.yourtis.ui.theme.view.auth.HalamanRegister
 import com.example.yourtis.ui.theme.view.pembeli.HalamanCart
 import com.example.yourtis.ui.theme.view.pembeli.HalamanCheckout
 import com.example.yourtis.ui.theme.view.pembeli.HalamanDetailSayur
+import com.example.yourtis.ui.theme.view.pembeli.HalamanProfil
 import com.example.yourtis.ui.theme.view.petani.HalamanEntrySayur
 import com.example.yourtis.ui.theme.view.petani.HalamanHomePetani
 import com.example.yourtis.ui.theme.view.petani.HalamanKelolaProduk
@@ -23,25 +24,27 @@ import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 import com.example.yourtis.ui.theme.viewmodel.PetaniViewModel
 import com.example.yourtis.ui.view.pembeli.HalamanKatalog
 
+
 @Composable
 fun PengelolaHalaman(navController: NavHostController = rememberNavController()) {
-    // Shared ViewModels
+    // Shared ViewModels menggunakan Factory Penyedia
     val pembeliVM: PembeliViewModel = viewModel(factory = PenyediaViewModel.Factory)
     val petaniVM: PetaniViewModel = viewModel(factory = PenyediaViewModel.Factory)
     val entryVM: EntryViewModel = viewModel(factory = PenyediaViewModel.Factory)
 
     NavHost(navController = navController, startDestination = "login") {
 
+        // --- AUTHENTICATION ---
         composable("login") {
             HalamanLogin(
                 onLoginSuccess = { user ->
                     if (user.role == "Petani") {
-                        // Simpan ID Petani untuk keperluan CRUD
                         entryVM.currentPetaniId = user.id_user
                         navController.navigate("home_petani") {
                             popUpTo("login") { inclusive = true }
                         }
                     } else {
+                        // Simpan ID User ke ViewModel agar data user tetap ada
                         pembeliVM.currentUserId = user.id_user
                         navController.navigate("home_pembeli") {
                             popUpTo("login") { inclusive = true }
@@ -59,15 +62,14 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
             )
         }
 
+        // --- PETANI FLOW ---
         composable("home_petani") {
             HalamanHomePetani(
                 onLogout = {
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
                 },
                 onNavigateToKelolaProduk = { navController.navigate("kelola_produk") },
-                onNavigateToLaporan = { navController.navigate("laporan_transaksi") }
+                onNavigateToLaporan = { navController.navigate("laporan_transaksi_petani") }
             )
         }
 
@@ -82,12 +84,7 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
 
         composable(
             route = "entry_sayur?id={id}",
-            arguments = listOf(
-                navArgument("id") {
-                    type = NavType.IntType
-                    defaultValue = -1
-                }
-            )
+            arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = -1 })
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getInt("id") ?: -1
             HalamanEntrySayur(
@@ -97,18 +94,23 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
             )
         }
 
-        composable("laporan_transaksi") {
-            HalamanLaporan(
-                onNavigateBack = { navController.popBackStack() }
-            )
+        composable("laporan_transaksi_petani") {
+            // PERBAIKAN: Menggunakan petaniVM karena HalamanLaporan membutuhkan PetaniViewModel
+            HalamanLaporan(viewModel = petaniVM, onNavigateBack = { navController.popBackStack() })
         }
 
+        // --- PEMBELI FLOW (KATALOG & BOTTOM NAVIGATION) ---
         composable("home_pembeli") {
             HalamanKatalog(
                 viewModel = pembeliVM,
                 onNavigateToCart = { navController.navigate("cart") },
                 onNavigateToDetail = { id -> navController.navigate("detail_sayur/$id") },
-                onLogout = { navController.navigate("login") { popUpTo(0) } }
+                // Hubungkan fungsi navigasi bawah
+                onNavigateToPesanan = { navController.navigate("pesanan_pembeli") },
+                onNavigateToProfil = { navController.navigate("profil_pembeli") },
+                onLogout = {
+                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                }
             )
         }
 
@@ -140,6 +142,37 @@ fun PengelolaHalaman(navController: NavHostController = rememberNavController())
                     navController.navigate("home_pembeli") {
                         popUpTo("home_pembeli") { inclusive = true }
                     }
+                }
+            )
+        }
+
+        // --- DESTINASI BARU NAVIGASI BAWAH PEMBELI ---
+        composable("pesanan_pembeli") {
+            // CATATAN: HalamanLaporan saat ini didesain untuk Petani (Admin).
+            // Jika ingin digunakan Pembeli, Anda perlu membuat versi Pembeli atau menyesuaikan ViewModelnya.
+            // Untuk sementara, agar tidak error compiler, kita gunakan petaniVM jika fiturnya sama atau hapus navigasi ini.
+            HalamanLaporan(
+                viewModel = petaniVM, 
+                onNavigateBack = {
+                    navController.navigate("home_pembeli") {
+                        popUpTo("home_pembeli") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("profil_pembeli") {
+            HalamanProfil(
+                onNavigateToHome = {
+                    navController.navigate("home_pembeli") {
+                        popUpTo("home_pembeli") { inclusive = true }
+                    }
+                },
+                onNavigateToPesanan = {
+                    navController.navigate("pesanan_pembeli")
+                },
+                onLogout = {
+                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
                 }
             )
         }

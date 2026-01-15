@@ -10,5 +10,6 @@ data class Transaksi(
     val metode_kirim: String, // "Pickup" atau "Delivery"
     val metode_bayar: String, // "Transfer" atau "COD"
     val status: String,       // "Pending" atau "Selesai"
-    val tgl_transaksi: String? = null // Opsional, dikirim server
+    val tgl_transaksi: String? = null, // Opsional, dikirim server
+    val alamat_pengiriman: String
 )

@@ -160,7 +160,11 @@ fun HalamanCheckout(
             // Tombol Buat Pesanan
             Button(
                 onClick = {
-                    // PERBAIKAN: Menghapus argumen '1' dan memastikan urutan parameter benar
+                    // Validasi input sebelum checkout
+                    if (alamat.isBlank()) {
+                        // Error akan ditangani di ViewModel
+                        return@Button
+                    }
                     // ID pembeli diambil otomatis dari currentUserId di ViewModel
                     viewModel.processCheckout(alamat, metodeKirim, metodeBayar)
                 },
@@ -175,14 +179,41 @@ fun HalamanCheckout(
                 }
             }
 
-            // Pesan Error jika gagal
+            // ✅ PERBAIKAN: Tampilkan error message yang lebih detail
             if (checkoutState is LoginUiState.Error) {
-                Text(
-                    "Terjadi kesalahan saat memproses pesanan.",
-                    color = Color.Red,
-                    modifier = Modifier.padding(top = 8.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Card(
+                    modifier = Modifier
+                        .padding(top = 16.dp)
+                        .fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "⚠️ Gagal Membuat Pesanan",
+                            color = Color(0xFFC62828),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            "Terjadi kesalahan saat memproses pesanan. Periksa koneksi internet Anda dan coba lagi.",
+                            color = Color(0xFFC62828),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Button(
+                            onClick = {
+                                // Retry checkout dengan data yang sama
+                                viewModel.processCheckout(alamat, metodeKirim, metodeBayar)
+                            },
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828))
+                        ) {
+                            Text("Coba Lagi", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
     }

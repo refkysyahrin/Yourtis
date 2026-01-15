@@ -5,6 +5,8 @@ import com.example.yourtis.modeldata.Sayur
 import com.example.yourtis.modeldata.Transaksi
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -38,7 +40,6 @@ interface YourTisApiService {
         @Part gambar: MultipartBody.Part
     ): Map<String, Any>
 
-    // ENDPOINT BARU: UPDATE SAYUR
     @Multipart
     @PUT("api/products/{id}")
     suspend fun updateSayur(
@@ -47,15 +48,16 @@ interface YourTisApiService {
         @Part("harga") harga: RequestBody,
         @Part("stok") stok: RequestBody,
         @Part("deskripsi") deskripsi: RequestBody,
-        @Part gambar: MultipartBody.Part? // Boleh null jika tidak ganti gambar
+        @Part gambar: MultipartBody.Part?
     ): Map<String, Any>
 
     @DELETE("api/products/{id}")
     suspend fun deleteSayur(@Path("id") id: Int): Map<String, Any>
 
     // --- TRANSAKSI ---
+    // Menggunakan Response agar bisa mengecek isSuccessful tanpa error parsing
     @POST("api/transactions/checkout")
-    suspend fun checkout(@Body transactionData: Map<String, Any>): Map<String, Any>
+    suspend fun checkout(@Body transactionData: Map<String, Any>): Response<ResponseBody>
 
     @GET("api/transactions")
     suspend fun getAllTransaksi(): List<Transaksi>

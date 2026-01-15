@@ -61,13 +61,14 @@ import com.example.yourtis.ui.theme.viewmodel.PembeliViewModel
 import com.example.yourtis.ui.theme.viewmodel.PenyediaViewModel
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HalamanKatalog(
     viewModel: PembeliViewModel,
     onNavigateToCart: () -> Unit,
     onNavigateToDetail: (Int) -> Unit,
+    onNavigateToPesanan: () -> Unit, // Parameter untuk navigasi pesanan
+    onNavigateToProfil: () -> Unit,  // Parameter untuk navigasi profil
     onLogout: () -> Unit
 ) {
     val homeUiState = viewModel.homeUiState
@@ -84,10 +85,10 @@ fun HalamanKatalog(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF2E7D32) // Warna hijau sesuai target
+                    containerColor = Color(0xFF2E7D32) // Hijau YourTis
                 ),
                 actions = {
-                    // Ikon Keranjang dengan Badge jumlah item
+                    // Badge Keranjang Real-time
                     BadgedBox(
                         badge = {
                             if (cartItems.isNotEmpty()) {
@@ -106,7 +107,7 @@ fun HalamanKatalog(
                             tint = Color.White
                         )
                     }
-                    // Tombol Keluar
+                    // Tombol Logout di Header
                     Text(
                         "Keluar",
                         color = Color.White,
@@ -118,27 +119,29 @@ fun HalamanKatalog(
             )
         },
         bottomBar = {
-            // Navigasi Bawah sesuai desain
+            // Navigasi Bawah Aktif
             NavigationBar(containerColor = Color.White) {
                 NavigationBarItem(
-                    selected = true,
-                    onClick = { /* Navigasi Home */ },
+                    selected = true, // Home sebagai tab aktif
+                    onClick = { /* Tetap di halaman home */ },
                     icon = { Icon(Icons.Default.Home, contentDescription = null) },
                     label = { Text("Home") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF2E7D32),
-                        selectedTextColor = Color(0xFF2E7D32)
+                        selectedTextColor = Color(0xFF2E7D32),
+                        unselectedIconColor = Color.Gray,
+                        indicatorColor = Color.Transparent
                     )
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = { /* Navigasi Pesanan */ },
+                    onClick = { onNavigateToPesanan() }, // Menuju Halaman Laporan Pesanan
                     icon = { Icon(Icons.Default.List, contentDescription = null) },
                     label = { Text("Pesanan") }
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = { /* Navigasi Profil */ },
+                    onClick = { onNavigateToProfil() }, // Menuju Halaman Profil User
                     icon = { Icon(Icons.Default.Person, contentDescription = null) },
                     label = { Text("Profil") }
                 )
@@ -160,7 +163,7 @@ fun HalamanKatalog(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp)
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
                         ) {
                             items(homeUiState.sayur) { sayur ->
                                 SayurItem(
@@ -192,7 +195,7 @@ fun SayurItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onItemClick() },
+            .clickable { onItemClick() }, // Navigasi ke Halaman Detail
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp)
@@ -203,10 +206,10 @@ fun SayurItem(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Gambar Sayur di kiri
+            // Muat gambar dari folder uploads backend
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data("http://10.0.2.2:3000/uploads/${sayur.gambar}") // URL Backend
+                    .data("http://10.0.2.2:3000/uploads/${sayur.gambar}")
                     .crossfade(true)
                     .build(),
                 contentDescription = sayur.nama_sayur,
@@ -218,7 +221,7 @@ fun SayurItem(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Info Teks (Tengah)
+            // Detail Produk (Nama, Harga, Stok)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = sayur.nama_sayur,
@@ -227,7 +230,7 @@ fun SayurItem(
                 )
                 Text(
                     text = "Rp ${sayur.harga}",
-                    color = Color(0xFF2E7D32), // Hijau
+                    color = Color(0xFF2E7D32), // Warna Hijau Harga
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
@@ -237,7 +240,7 @@ fun SayurItem(
                 )
             }
 
-            // Tombol Tambah (+) Hijau di kanan
+            // Tombol Tambah ke Keranjang
             Button(
                 onClick = { onAddToCart(sayur) },
                 modifier = Modifier.size(40.dp),
