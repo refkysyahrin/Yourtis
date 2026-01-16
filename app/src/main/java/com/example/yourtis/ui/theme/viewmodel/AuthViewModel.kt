@@ -8,13 +8,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.yourtis.modeldata.User
 import com.example.yourtis.repositori.YourTisRepository
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
-import java.io.IOException
 
 // State UI untuk Login/Register
 sealed interface LoginUiState {
     data class Success(val user: User) : LoginUiState
-    object Error : LoginUiState
+    data class Error(val message: String) : LoginUiState // Ditambah message error
     object Loading : LoginUiState
     object Idle : LoginUiState
 }
@@ -30,36 +28,45 @@ class AuthViewModel(private val repository: YourTisRepository) : ViewModel() {
     var password by mutableStateOf("")
     var noHp by mutableStateOf("")
     var alamat by mutableStateOf("")
-    var role by mutableStateOf("Pembeli") // Default role, bisa diubah via RadioButton
+    var role by mutableStateOf("Pembeli")
 
     // Fungsi Login
     fun login() {
+        // VALIDASI: Email dan Password tidak boleh kosong
+        if (email.isBlank() || password.isBlank()) {
+            uiState = LoginUiState.Error("Email dan password tidak boleh kosong")
+            return
+        }
+
         viewModelScope.launch {
             uiState = LoginUiState.Loading
             try {
                 val response = repository.login(email, password)
 
                 if (response.data != null) {
-                    // Login Berhasil
                     uiState = LoginUiState.Success(response.data)
                 } else {
-                    // Login Gagal (Response OK tapi data null)
-                    uiState = LoginUiState.Error
+                    uiState = LoginUiState.Error("Email atau password salah")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                uiState = LoginUiState.Error
+                uiState = LoginUiState.Error("Gagal login: ${e.message}")
             }
         }
     }
 
     // Fungsi Register
     fun register(onSuccess: () -> Unit) {
+        // VALIDASI: Semua field harus diisi
+        if (username.isBlank() || email.isBlank() || password.isBlank() || noHp.isBlank() || alamat.isBlank()) {
+            uiState = LoginUiState.Error("Semua data harus diisi!")
+            return
+        }
+
         viewModelScope.launch {
             uiState = LoginUiState.Loading
             try {
                 val newUser = User(
-                    id_user = 0, // ID akan di-generate oleh database
+                    id_user = 0,
                     username = username,
                     email = email,
                     role = role,
@@ -67,27 +74,16 @@ class AuthViewModel(private val repository: YourTisRepository) : ViewModel() {
                     alamat = alamat
                 )
 
-                // Kirim data ke repository
                 repository.register(newUser, password)
-
-                // Jika tidak ada error (Exception), berarti sukses
                 uiState = LoginUiState.Success(newUser)
-                onSuccess() // Callback navigasi balik ke login
+                // onSuccess dipanggil di LaunchedEffect UI saja agar konsisten
             } catch (e: Exception) {
-                e.printStackTrace()
-                uiState = LoginUiState.Error
+                uiState = LoginUiState.Error("Gagal daftar: ${e.message}")
             }
         }
     }
 
-    // Reset Form (Dipanggil saat pindah halaman atau logout)
     fun resetState() {
         uiState = LoginUiState.Idle
-        username = ""
-        email = ""
-        password = ""
-        noHp = ""
-        alamat = ""
-        role = "Pembeli"
     }
 }
