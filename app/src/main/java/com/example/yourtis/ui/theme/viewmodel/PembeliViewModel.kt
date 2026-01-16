@@ -14,6 +14,7 @@ import com.example.yourtis.modeldata.User
 import com.example.yourtis.repositori.YourTisRepository
 import kotlinx.coroutines.launch
 
+
 // State untuk memantau pengambilan data katalog sayur
 sealed interface HomeUiState {
     data class Success(val sayur: List<Sayur>) : HomeUiState
@@ -29,14 +30,14 @@ data class CartItem(
 
 class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() {
 
-    // Menyimpan ID User yang login agar transaksi tercatat dengan benar di database
+    // Menyimpan ID User yang login agar transaksi tercatat dengan benar
     var currentUserId by mutableStateOf(0)
 
     // State untuk memantau data katalog di halaman Home
     var homeUiState: HomeUiState by mutableStateOf(HomeUiState.Loading)
         private set
 
-    // State untuk menyimpan list riwayat transaksi
+    // State untuk menyimpan list riwayat transaksi pembeli
     var listTransaksi by mutableStateOf(listOf<Transaksi>())
         private set
 
@@ -44,7 +45,7 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
     private val _cartItems = mutableStateListOf<CartItem>()
     val cartItems: List<CartItem> get() = _cartItems
 
-    // State untuk memantau proses checkout
+    // State untuk memantau proses checkout (Idle, Loading, Success, Error)
     var checkoutUiState: LoginUiState by mutableStateOf(LoginUiState.Idle)
         private set
 
@@ -65,7 +66,7 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         }
     }
 
-    // Mengambil riwayat transaksi milik pembeli
+    // Mengambil riwayat transaksi milik pembeli berdasarkan ID
     fun getTransactions() {
         if (currentUserId == 0) return
         viewModelScope.launch {
@@ -79,7 +80,7 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         }
     }
 
-    // Mengambil item-item detail dari satu transaksi spesifik
+    // Mengambil item detail (daftar sayur) dari satu transaksi spesifik
     suspend fun getTransactionDetails(id: Int): List<DetailTransaksi> {
         return try {
             repository.getTransactionItems(id)
@@ -89,7 +90,7 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         }
     }
 
-    // Mengambil detail sayur spesifik (Untuk Halaman Detail Produk)
+    // Mengambil detail produk spesifik (Halaman Detail)
     suspend fun getSayurDetail(id: Int): Sayur? {
         return try {
             repository.getSayurById(id)
@@ -103,11 +104,12 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         getSayur()
     }
 
-    // Menambah produk ke keranjang belanja
+    // Menambah produk ke keranjang belanja dengan validasi stok
     fun addToCart(sayur: Sayur) {
         val index = _cartItems.indexOfFirst { it.sayur.id_sayur == sayur.id_sayur }
         if (index != -1) {
             val item = _cartItems[index]
+            // Validasi agar jumlah beli tidak melebihi stok yang tersedia
             if (item.qty < sayur.stok) {
                 _cartItems[index] = item.copy(qty = item.qty + 1)
             }
@@ -129,20 +131,25 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
         }
     }
 
-    // Menghitung total harga belanjaan secara otomatis
+    // Menghitung total harga seluruh isi keranjang
     fun calculateTotal(): Int = _cartItems.sumOf { it.sayur.harga * it.qty }
 
-    // Memproses data pesanan ke backend
+    /**
+     * Memproses data pesanan ke backend (REQ-TRX)
+     * Memastikan payload JSON sinkron dengan backend
+     */
     fun processCheckout(alamat: String, metodeKirim: String, metodeBayar: String) {
+        // Validasi identitas user dan kelengkapan alamat
         if (currentUserId == 0 || alamat.isBlank()) {
             Log.e("CHECKOUT_ERROR", "Data tidak lengkap atau User belum login.")
-            checkoutUiState = LoginUiState.Error
+            checkoutUiState = LoginUiState.Error("Data alamat tidak boleh kosong!")
             return
         }
 
         viewModelScope.launch {
             checkoutUiState = LoginUiState.Loading
             try {
+                // Pemetaan items agar sesuai dengan format yang diminta backend
                 val itemsList = _cartItems.map {
                     mapOf(
                         "id_sayur" to it.sayur.id_sayur,
@@ -151,6 +158,7 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
                     )
                 }
 
+                // Data transaksi lengkap termasuk alamat pengiriman
                 val transactionData = mapOf(
                     "id_pembeli" to currentUserId,
                     "total_bayar" to calculateTotal(),
@@ -160,17 +168,19 @@ class PembeliViewModel(private val repository: YourTisRepository) : ViewModel() 
                     "items" to itemsList
                 )
 
+                // Mengirim payload ke repository
                 repository.checkout(transactionData)
 
+                // Pembersihan state setelah berhasil
                 _cartItems.clear()
-                getSayur()
+                getSayur() // Refresh stok katalog setelah terjual
 
                 checkoutUiState = LoginUiState.Success(User(id_user = currentUserId, "", "", "", "", ""))
                 Log.d("CHECKOUT", "Pesanan Berhasil Disimpan.")
 
             } catch (e: Exception) {
                 Log.e("CHECKOUT_ERROR", "Error Checkout: ${e.message}")
-                checkoutUiState = LoginUiState.Error
+                checkoutUiState = LoginUiState.Error(e.message ?: "Terjadi kesalahan saat checkout")
             }
         }
     }
