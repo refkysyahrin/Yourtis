@@ -42,8 +42,9 @@ class NetworkYourTisRepository(
 
     override suspend fun getSayur(): List<Sayur> = yourTisApiService.getAllSayur()
 
+    // PERBAIKAN: Langsung panggil API by ID agar lebih cepat
     override suspend fun getSayurById(id: Int): Sayur {
-        return yourTisApiService.getAllSayur().find { it.id_sayur == id } ?: throw Exception("Not Found")
+        return yourTisApiService.getSayurById(id)
     }
 
     override suspend fun insertSayur(idPetani: RequestBody, nama: RequestBody, harga: RequestBody, stok: RequestBody, desc: RequestBody, img: MultipartBody.Part) {
@@ -56,7 +57,8 @@ class NetworkYourTisRepository(
 
     override suspend fun deleteSayur(id: Int) = yourTisApiService.deleteSayur(id).let { Unit }
 
-    override suspend fun checkout(data: Map<String, Any>) {
+    // FIXED: Moved @JvmSuppressWildcards to the type itself to fix compilation error
+    override suspend fun checkout(data: Map<String, @JvmSuppressWildcards Any>) {
         try {
             val response = yourTisApiService.checkout(data)
             if (!response.isSuccessful) {
@@ -70,13 +72,14 @@ class NetworkYourTisRepository(
 
     override suspend fun getAllTransaksi(): List<Transaksi> = yourTisApiService.getAllTransaksi()
 
-    override suspend fun getTransaksiByPembeli(idPembeli: Int): List<Transaksi> = 
+    override suspend fun getTransaksiByPembeli(idPembeli: Int): List<Transaksi> =
         yourTisApiService.getTransaksiByPembeli(idPembeli)
 
     override suspend fun updateStatusTransaksi(idTransaksi: String, status: String) {
         yourTisApiService.updateStatusTransaksi(idTransaksi, mapOf("status" to status))
     }
 
+    // SUDAH BENAR: Memanggil detail items per transaksi
     override suspend fun getTransactionItems(idTransaksi: Int): List<DetailTransaksi> =
         yourTisApiService.getTransactionItems(idTransaksi)
 }
