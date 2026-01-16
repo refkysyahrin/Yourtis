@@ -12,7 +12,9 @@ import com.example.yourtis.repositori.YourTisRepository
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-// State untuk Dashboard Petani (Pendapatan & List Transaksi) [cite: 90, 171]
+
+
+// State untuk Dashboard Petani (Pendapatan & List Transaksi)
 sealed interface DashboardUiState {
     data class Success(
         val totalPendapatan: Int,
@@ -23,7 +25,7 @@ sealed interface DashboardUiState {
     object Loading : DashboardUiState
 }
 
-// State untuk Produk (CRUD Sayur oleh Petani) [cite: 89, 133]
+// State untuk Produk (CRUD Sayur oleh Petani)
 sealed interface ProdukUiState {
     data class Success(val sayur: List<Sayur>) : ProdukUiState
     object Error : ProdukUiState
@@ -32,11 +34,11 @@ sealed interface ProdukUiState {
 
 class PetaniViewModel(private val repository: YourTisRepository) : ViewModel() {
 
-    // Status UI untuk Dashboard Laporan [cite: 177]
+    // Status UI untuk Dashboard Laporan
     var dashboardUiState: DashboardUiState by mutableStateOf(DashboardUiState.Loading)
         private set
 
-    // Status UI untuk Pengelolaan Produk [cite: 138]
+    // Status UI untuk Pengelolaan Produk
     var produkUiState: ProdukUiState by mutableStateOf(ProdukUiState.Loading)
         private set
 
@@ -47,13 +49,13 @@ class PetaniViewModel(private val repository: YourTisRepository) : ViewModel() {
 
     /**
      * 1. Load Data Dashboard
-     * Mengambil dan menghitung data pesanan secara real-time [cite: 173, 174, 177]
+     * Mengambil dan menghitung data pesanan secara real-time
      */
     fun loadDashboard() {
         viewModelScope.launch {
             dashboardUiState = DashboardUiState.Loading
             try {
-                // Mengambil seluruh data transaksi [cite: 179]
+                // Mengambil seluruh data transaksi dari repository
                 val allTransactions = repository.getAllTransaksi()
 
                 // REQ-MON-01: Menghitung total nominal pendapatan hanya dari pesanan yang 'Selesai'
@@ -61,10 +63,10 @@ class PetaniViewModel(private val repository: YourTisRepository) : ViewModel() {
                     .filter { it.status == "Selesai" }
                     .sumOf { it.total_bayar }
 
-                // Menghitung jumlah total pesanan yang masuk [cite: 174]
+                // Menghitung jumlah total pesanan yang masuk untuk statistik dashboard
                 val count = allTransactions.size
 
-                // REQ-MON-02: Menyediakan daftar pesanan lengkap untuk ditampilkan di laporan [cite: 180]
+                // REQ-MON-02: Menyediakan daftar pesanan lengkap untuk ditampilkan di laporan
                 dashboardUiState = DashboardUiState.Success(
                     totalPendapatan = totalSelesai,
                     jumlahPesanan = count,
@@ -79,7 +81,7 @@ class PetaniViewModel(private val repository: YourTisRepository) : ViewModel() {
 
     /**
      * 2. Load Data Produk
-     * Menampilkan katalog sayur yang dikelola petani [cite: 89, 312]
+     * Menampilkan katalog sayur yang dikelola petani agar tetap sinkron
      */
     fun loadProduk() {
         viewModelScope.launch {
@@ -96,13 +98,14 @@ class PetaniViewModel(private val repository: YourTisRepository) : ViewModel() {
 
     /**
      * 3. Hapus Produk (REQ-PROD-03)
-     * Menghapus sayur yang sudah tidak dijual lagi [cite: 141, 145]
+     * Menghapus sayur dan langsung memperbarui list produk
      */
     fun deleteSayur(id: Int) {
         viewModelScope.launch {
             try {
                 repository.deleteSayur(id)
-                loadProduk() // Refresh list setelah hapus agar data tetap akurat
+                // SINKRONISASI: Panggil ulang agar katalog pembeli & petani terupdate
+                loadProduk()
             } catch (e: Exception) {
                 Log.e("PetaniVM", "Error delete produk: ${e.message}")
             }
@@ -111,15 +114,15 @@ class PetaniViewModel(private val repository: YourTisRepository) : ViewModel() {
 
     /**
      * 4. Update Status Transaksi
-     * Mengelola progres pesanan pembeli (CRUD Status) [cite: 340]
+     * Mengelola progres pesanan (Proses -> Selesai) dan update pendapatan
      */
     fun updateStatusTransaksi(idTransaksi: String, newStatus: String) {
         viewModelScope.launch {
             try {
-                // Mengirim pembaruan status ke backend [cite: 203]
+                // Mengirim pembaruan status ke backend
                 repository.updateStatusTransaksi(idTransaksi, newStatus)
 
-                // Refresh data dashboard agar total pendapatan terupdate otomatis [cite: 177]
+                // Refresh dashboard agar angka pendapatan di Admin langsung berubah
                 loadDashboard()
             } catch (e: Exception) {
                 Log.e("PetaniVM", "Error update status: ${e.message}")
